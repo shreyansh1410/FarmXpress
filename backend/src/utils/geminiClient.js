@@ -28,6 +28,72 @@ const safeJsonParse = (text) => {
   }
 };
 
+const stripMarkdownFence = (text) => {
+  if (!text) return "";
+  return text
+    .replace(/^\s*```(?:json)?\s*/i, "")
+    .replace(/\s*```\s*$/i, "")
+    .trim();
+};
+
+const extractBalancedJsonObject = (text) => {
+  if (!text) return "";
+
+  let start = -1;
+  let depth = 0;
+  let inString = false;
+  let isEscaped = false;
+
+  for (let i = 0; i < text.length; i += 1) {
+    const char = text[i];
+
+    if (inString) {
+      if (isEscaped) {
+        isEscaped = false;
+      } else if (char === "\\") {
+        isEscaped = true;
+      } else if (char === '"') {
+        inString = false;
+      }
+      continue;
+    }
+
+    if (char === '"') {
+      inString = true;
+      continue;
+    }
+
+    if (char === "{") {
+      if (start < 0) start = i;
+      depth += 1;
+      continue;
+    }
+
+    if (char === "}" && depth > 0) {
+      depth -= 1;
+      if (depth === 0 && start >= 0) {
+        return text.slice(start, i + 1);
+      }
+    }
+  }
+
+  return "";
+};
+
+const extractJsonCandidate = (text) => {
+  if (!text) return "";
+
+  const fencedMatch = text.match(/```(?:json)?\s*([\s\S]*?)\s*```/i);
+  const fencedContent = fencedMatch?.[1]?.trim();
+  if (fencedContent) return fencedContent;
+
+  const bareText = stripMarkdownFence(text);
+  const balancedFromBareText = extractBalancedJsonObject(bareText);
+  if (balancedFromBareText) return balancedFromBareText;
+
+  return extractBalancedJsonObject(text);
+};
+
 const parseGeminiText = (data) => {
   const text =
     data?.candidates?.[0]?.content?.parts
@@ -35,17 +101,13 @@ const parseGeminiText = (data) => {
       .join("")
       .trim() || "";
 
-  // Gemini may wrap JSON in fenced blocks; strip them before parsing.
-  const cleanedText = text
-    .replace(/^```json\s*/i, "")
-    .replace(/^```\s*/i, "")
-    .replace(/\s*```$/i, "")
-    .trim();
+  // Gemini may wrap JSON in fenced blocks or prepend/append text.
+  const cleanedText = extractJsonCandidate(text) || stripMarkdownFence(text);
 
   return { rawText: text, cleanedText };
 };
 
-const requestWithModel = async ({ model, systemPrompt, userPrompt }) => {
+const requestWithModel = async ({ model, systemPrompt, userPrompt, forceJson = false }) => {
   const response = await fetch(buildGeminiUrl(model), {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -59,6 +121,7 @@ const requestWithModel = async ({ model, systemPrompt, userPrompt }) => {
       generationConfig: {
         temperature: 0.4,
         maxOutputTokens: 700,
+        ...(forceJson ? { responseMimeType: "application/json" } : {}),
       },
     }),
   });
@@ -76,7 +139,7 @@ const requestWithModel = async ({ model, systemPrompt, userPrompt }) => {
   return parseGeminiText(data);
 };
 
-const generateGeminiResponse = async ({ systemPrompt, userPrompt }) => {
+const generateGeminiResponse = async ({ systemPrompt, userPrompt, forceJson = false }) => {
   if (!hasGeminiConfig()) {
     throw new Error("Gemini API key is not configured.");
   }
@@ -86,7 +149,7 @@ const generateGeminiResponse = async ({ systemPrompt, userPrompt }) => {
 
   for (const model of models) {
     try {
-      return await requestWithModel({ model, systemPrompt, userPrompt });
+      return await requestWithModel({ model, systemPrompt, userPrompt, forceJson });
     } catch (error) {
       lastError = error;
       // Retry only if model is not available for this account/API.
@@ -103,11 +166,13 @@ const generateGeminiJson = async ({ systemPrompt, userPrompt }) => {
   const { cleanedText, rawText } = await generateGeminiResponse({
     systemPrompt,
     userPrompt,
+    forceJson: true,
   });
 
-  const parsed = safeJsonParse(cleanedText);
+  const parsed = safeJsonParse(cleanedText) || safeJsonParse(extractJsonCandidate(rawText));
   if (!parsed) {
-    throw new Error(`Gemini returned non-JSON response: ${rawText}`);
+    const preview = String(rawText || "").slice(0, 260);
+    throw new Error(`Gemini returned non-JSON response: ${preview}`);
   }
 
   return parsed;

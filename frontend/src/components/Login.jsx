@@ -4,6 +4,7 @@ import { useDispatch } from "react-redux";
 import { addUser } from "../utils/userSlice";
 import { useLocation, useNavigate } from "react-router-dom";
 import { BASE_URL } from "../utils/constants";
+import { GoogleLogin } from "@react-oauth/google";
 
 const Login = () => {
   const [emailId, setEmailId] = useState("");
@@ -25,6 +26,27 @@ const Login = () => {
     if (typeof data?.message === "string") return data.message;
     if (typeof data?.error === "string") return data.error;
     return fallback;
+  };
+
+  const HandleGoogleAuth = async (credentialResponse) => {
+    try {
+      setIsSubmitting(true);
+      setError("");
+      const res = await axios.post(
+        BASE_URL + "/google-auth",
+        { credential: credentialResponse.credential },
+        { withCredentials: true },
+      );
+      dispatch(addUser(res.data?.data || res.data));
+      navigate("/");
+    } catch (err) {
+      console.error(err);
+      setError(
+        extractErrorMessage(err, "Google sign-in failed. Please try again."),
+      );
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const HandleLogin = async () => {
@@ -71,7 +93,9 @@ const Login = () => {
       navigate("/");
     } catch (err) {
       console.error(err);
-      setError(extractErrorMessage(err, "Unable to create account. Please try again."));
+      setError(
+        extractErrorMessage(err, "Unable to create account. Please try again."),
+      );
     } finally {
       setIsSubmitting(false);
     }
@@ -107,7 +131,6 @@ const Login = () => {
                     placeholder="Type here"
                     className="input input-bordered glass-input w-full"
                   />
-
                 </>
               )}
 
@@ -185,8 +208,16 @@ const Login = () => {
                       type="button"
                       onClick={() => setShowConfirmPassword((value) => !value)}
                       className="absolute inset-y-0 right-0 flex items-center px-3 text-base-content/70 hover:text-base-content"
-                      aria-label={showConfirmPassword ? "Hide confirm password" : "Show confirm password"}
-                      title={showConfirmPassword ? "Hide confirm password" : "Show confirm password"}
+                      aria-label={
+                        showConfirmPassword
+                          ? "Hide confirm password"
+                          : "Show confirm password"
+                      }
+                      title={
+                        showConfirmPassword
+                          ? "Hide confirm password"
+                          : "Show confirm password"
+                      }
                     >
                       {showConfirmPassword ? (
                         <svg
@@ -238,6 +269,28 @@ const Login = () => {
                 "Sign Up"
               )}
             </button>
+          </div>
+
+          {/* Divider */}
+          <div className="flex items-center gap-3 my-2">
+            <div className="flex-1 h-px bg-base-content/20" />
+            <span className="text-xs opacity-50">or</span>
+            <div className="flex-1 h-px bg-base-content/20" />
+          </div>
+
+          {/* Google Sign-In */}
+          <div className="flex justify-center">
+            <GoogleLogin
+              onSuccess={HandleGoogleAuth}
+              onError={() =>
+                setError("Google sign-in failed. Please try again.")
+              }
+              useOneTap={false}
+              theme="filled_black"
+              shape="rectangular"
+              width="100%"
+              text={isLogin ? "signin_with" : "signup_with"}
+            />
           </div>
           <p
             onClick={() => {

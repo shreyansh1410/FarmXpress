@@ -307,13 +307,19 @@ aiRouter.post("/ai/route-suggestion", companyAuth, async (req, res) => {
       potentialDistanceSavingsKm: candidate.potentialDistanceSavingsKm,
     }));
 
-    const aiResult = await generateGeminiJson({
-      systemPrompt:
-        "You are a logistics optimization assistant. Reply strictly in JSON with this shape: {\"recommendations\":[{\"pairId\":\"string\",\"decision\":\"merge|consider|avoid\",\"reason\":\"string\"}]}. Keep each reason under 35 words.",
-      userPrompt: `Company: ${companyName}. Evaluate these route merge candidates:\n${JSON.stringify(
-        aiInput
-      )}`,
-    });
+    let aiResult;
+    try {
+      aiResult = await generateGeminiJson({
+        systemPrompt:
+          "You are a logistics optimization assistant. Reply strictly in JSON only (no markdown, no code fences) with this shape: {\"recommendations\":[{\"pairId\":\"string\",\"decision\":\"merge|consider|avoid\",\"reason\":\"string\"}]}. Keep each reason under 35 words.",
+        userPrompt: `Company: ${companyName}. Evaluate these route merge candidates:\n${JSON.stringify(
+          aiInput
+        )}`,
+      });
+    } catch (error) {
+      // Keep endpoint reliable even when the AI provider returns malformed output.
+      aiResult = { recommendations: [] };
+    }
 
     const aiRecommendations = new Map(
       (aiResult.recommendations || []).map((item) => [item.pairId, item])
