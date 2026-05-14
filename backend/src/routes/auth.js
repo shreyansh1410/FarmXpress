@@ -9,6 +9,17 @@ const mongoose = require("mongoose");
 
 const googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 
+// Use secure cookie settings only in production (HTTPS).
+// On local HTTP the Secure flag prevents cookies from being sent
+// on non-HTTPS origins in Firefox/Safari, which breaks auth.
+const isProduction =
+  process.env.NODE_ENV === "production" || !!process.env.VERCEL;
+const COOKIE_OPTIONS = {
+  httpOnly: true,
+  secure: isProduction,
+  sameSite: isProduction ? "none" : "lax",
+};
+
 const sanitizeCompany = (companyDoc) => {
   const safeCompany = companyDoc.toObject();
   delete safeCompany.password;
@@ -49,11 +60,7 @@ authRouter.post("/signup", async (req, res) => {
     await company.save();
     const token = await company.getJWT();
 
-    res.cookie("token", token, {
-      httpOnly: true,
-      secure: true,
-      sameSite: "none",
-    });
+    res.cookie("token", token, COOKIE_OPTIONS);
 
     res.status(201).json({
       message: "Account created successfully.",
@@ -111,11 +118,7 @@ authRouter.post("/login", async (req, res) => {
     }
     const token = await company.getJWT();
 
-    res.cookie("token", token, {
-      httpOnly: true,
-      secure: true,
-      sameSite: "none",
-    });
+    res.cookie("token", token, COOKIE_OPTIONS);
 
     res.json({
       message: "Login successful.",
@@ -182,11 +185,7 @@ authRouter.post("/google-auth", async (req, res) => {
     }
 
     const token = await company.getJWT();
-    res.cookie("token", token, {
-      httpOnly: true,
-      secure: true,
-      sameSite: "none",
-    });
+    res.cookie("token", token, COOKIE_OPTIONS);
 
     res.json({
       message: "Google authentication successful.",

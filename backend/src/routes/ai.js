@@ -97,43 +97,78 @@ const scorePair = ({
 }) => {
   const stopSetOne = new Set(truckOneStops);
   const stopSetTwo = new Set(truckTwoStops);
-  const commonStops = truckOneStops.filter((stop) => stopSetTwo.has(stop)).length;
+  const commonStops = truckOneStops.filter((stop) =>
+    stopSetTwo.has(stop),
+  ).length;
   const combinedStops = new Set([...truckOneStops, ...truckTwoStops]).size;
   const overlapRatio = combinedStops === 0 ? 0 : commonStops / combinedStops;
 
   const biggerTruck =
     truckOne.totalCapacity >= truckTwo.totalCapacity ? truckOne : truckTwo;
-  const smallerTruck = biggerTruck._id.toString() === truckOne._id.toString() ? truckTwo : truckOne;
-  const biggerStops = biggerTruck._id.toString() === truckOne._id.toString() ? truckOneStops : truckTwoStops;
+  const smallerTruck =
+    biggerTruck._id.toString() === truckOne._id.toString()
+      ? truckTwo
+      : truckOne;
+  const biggerStops =
+    biggerTruck._id.toString() === truckOne._id.toString()
+      ? truckOneStops
+      : truckTwoStops;
   const smallerStops =
-    biggerTruck._id.toString() === truckOne._id.toString() ? truckTwoStops : truckOneStops;
+    biggerTruck._id.toString() === truckOne._id.toString()
+      ? truckTwoStops
+      : truckOneStops;
 
-  const isSubset = smallerStops.every((stop) => biggerStops.includes(stop));
+  // Check both directions: smaller-capacity route into bigger-capacity route, AND vice versa
+  const isSubsetForward = smallerStops.every((stop) =>
+    biggerStops.includes(stop),
+  );
+  const isSubsetReverse = biggerStops.every((stop) =>
+    smallerStops.includes(stop),
+  );
+  const isSubset = isSubsetForward || isSubsetReverse;
+
+  // Use the correct receiver/donor direction for capacity checks
+  const receiverStops = isSubsetReverse ? smallerStops : biggerStops;
+  const donorStops = isSubsetReverse ? biggerStops : smallerStops;
+  const receiverTruckForCheck = isSubsetReverse ? smallerTruck : biggerTruck;
+  const donorTruckForCheck = isSubsetReverse ? biggerTruck : smallerTruck;
 
   let capacityViolations = 0;
-  smallerStops.forEach((stop) => {
-    const biggerStopIndex = biggerStops.indexOf(stop);
-    const smallerStopIndex = smallerStops.indexOf(stop);
-    if (biggerStopIndex < 0 || smallerStopIndex < 0) return;
+  donorStops.forEach((stop) => {
+    const receiverIdx = receiverStops.indexOf(stop);
+    const donorIdx = donorStops.indexOf(stop);
+    if (receiverIdx < 0 || donorIdx < 0) return;
 
-    const biggerRemaining = biggerTruck.remainingLoad?.[biggerStopIndex] ?? 0;
-    const smallerLoad = smallerTruck.currentLoad?.[smallerStopIndex] ?? 0;
-    if (biggerRemaining < smallerLoad) {
+    const receiverRemaining =
+      receiverTruckForCheck.remainingLoad?.[receiverIdx] ?? 0;
+    const donorLoad = donorTruckForCheck.currentLoad?.[donorIdx] ?? 0;
+    if (receiverRemaining < donorLoad) {
       capacityViolations += 1;
     }
   });
 
   const capacityFit = capacityViolations === 0 ? 1 : 0;
-  const routeReduction = (truckOneStops.length + truckTwoStops.length - combinedStops) / 10;
+  const routeReduction =
+    (truckOneStops.length + truckTwoStops.length - combinedStops) / 10;
   const subsetBonus = isSubset ? 0.2 : 0;
-  const routeOneDistanceKm = computeRouteDistanceKm(truckOneSource, truckOneStops);
-  const routeTwoDistanceKm = computeRouteDistanceKm(truckTwoSource, truckTwoStops);
+  const routeOneDistanceKm = computeRouteDistanceKm(
+    truckOneSource,
+    truckOneStops,
+  );
+  const routeTwoDistanceKm = computeRouteDistanceKm(
+    truckTwoSource,
+    truckTwoStops,
+  );
   const combinedDistanceKm = routeOneDistanceKm + routeTwoDistanceKm;
   const potentialDistanceSavingsKm = Number(
-    (Math.min(routeOneDistanceKm, routeTwoDistanceKm) * overlapRatio).toFixed(1)
+    (Math.min(routeOneDistanceKm, routeTwoDistanceKm) * overlapRatio).toFixed(
+      1,
+    ),
   );
   const distanceEfficiency =
-    combinedDistanceKm > 0 ? potentialDistanceSavingsKm / combinedDistanceKm : 0;
+    combinedDistanceKm > 0
+      ? potentialDistanceSavingsKm / combinedDistanceKm
+      : 0;
   const score =
     overlapRatio * 0.5 +
     capacityFit * 0.25 +
@@ -142,7 +177,9 @@ const scorePair = ({
     distanceEfficiency * 0.25;
   const savingsPercent =
     combinedDistanceKm > 0
-      ? Number(((potentialDistanceSavingsKm / combinedDistanceKm) * 100).toFixed(1))
+      ? Number(
+          ((potentialDistanceSavingsKm / combinedDistanceKm) * 100).toFixed(1),
+        )
       : Math.max(commonStops * 7, 5);
 
   return {
@@ -156,7 +193,8 @@ const scorePair = ({
     routeTwoDistanceKm,
     potentialDistanceSavingsKm,
     savingsEstimate: `${Math.max(savingsPercent, 5)}%`,
-    savingsType: "Estimated distance/fuel saving from overlapping city segments",
+    savingsType:
+      "Estimated distance/fuel saving from overlapping city segments",
   };
 };
 
@@ -166,7 +204,9 @@ const getCompanyRouteData = async (companyId) => {
 
   const truckIds = trucks.map((truck) => truck._id);
   const routes = await Route.find({ truckId: { $in: truckIds } });
-  const routeMap = new Map(routes.map((route) => [route.truckId.toString(), route]));
+  const routeMap = new Map(
+    routes.map((route) => [route.truckId.toString(), route]),
+  );
 
   return trucks
     .map((truck) => {
@@ -184,10 +224,14 @@ const getCompanyPairData = async (companyId) => {
   const trucks = await Truck.find({ companyId });
   if (!trucks.length) return [];
 
-  const truckById = new Map(trucks.map((truck) => [truck._id.toString(), truck]));
+  const truckById = new Map(
+    trucks.map((truck) => [truck._id.toString(), truck]),
+  );
   const truckIds = trucks.map((truck) => truck._id);
   const routes = await Route.find({ truckId: { $in: truckIds } });
-  const routeByTruckId = new Map(routes.map((route) => [route.truckId.toString(), route]));
+  const routeByTruckId = new Map(
+    routes.map((route) => [route.truckId.toString(), route]),
+  );
   const pairs = await MergeablePair.find({
     truckOneId: { $in: truckIds },
     truckTwoId: { $in: truckIds },
@@ -311,9 +355,9 @@ aiRouter.post("/ai/route-suggestion", companyAuth, async (req, res) => {
     try {
       aiResult = await generateGeminiJson({
         systemPrompt:
-          "You are a logistics optimization assistant. Reply strictly in JSON only (no markdown, no code fences) with this shape: {\"recommendations\":[{\"pairId\":\"string\",\"decision\":\"merge|consider|avoid\",\"reason\":\"string\"}]}. Keep each reason under 35 words.",
+          'You are a logistics optimization assistant. Reply strictly in JSON only (no markdown, no code fences) with this shape: {"recommendations":[{"pairId":"string","decision":"merge|consider|avoid","reason":"string"}]}. Keep each reason under 35 words.',
         userPrompt: `Company: ${companyName}. Evaluate these route merge candidates:\n${JSON.stringify(
-          aiInput
+          aiInput,
         )}`,
       });
     } catch (error) {
@@ -322,7 +366,7 @@ aiRouter.post("/ai/route-suggestion", companyAuth, async (req, res) => {
     }
 
     const aiRecommendations = new Map(
-      (aiResult.recommendations || []).map((item) => [item.pairId, item])
+      (aiResult.recommendations || []).map((item) => [item.pairId, item]),
     );
 
     const suggestions = topCandidates.map((candidate) => {
@@ -371,7 +415,7 @@ aiRouter.post("/ai/chat", async (req, res) => {
     const { cleanedText } = await generateGeminiResponse({
       systemPrompt: APP_CHAT_SYSTEM_PROMPT,
       userPrompt: `Conversation:\n${JSON.stringify(
-        compactHistory
+        compactHistory,
       )}\n\nUser message: ${message}`,
     });
 

@@ -85,25 +85,36 @@ const ViewTrucks = () => {
       const res = await axios.patch(
         BASE_URL + `/scheduleDelivery/truck/${truckId}`,
         payload,
-        { withCredentials: true }
+        { withCredentials: true },
       );
 
       const updatedTruck = res.data?.data;
       setTrucks((prevTrucks) =>
         prevTrucks.map((truck) =>
-          truck._id === truckId ? { ...truck, ...updatedTruck } : truck
-        )
+          truck._id === truckId ? { ...truck, ...updatedTruck } : truck,
+        ),
       );
       setMessage(res.data?.message || "Truck updated successfully.");
       cancelEditing();
     } catch (err) {
-      setError(err.response?.data || "Unable to update truck.");
+      if (!err.response) {
+        setError(
+          "Cannot reach the server. Make sure the backend is running on port 5000.",
+        );
+      } else {
+        const data = err.response.data;
+        setError(
+          typeof data === "string"
+            ? data
+            : data?.message || data?.error || "Unable to update truck.",
+        );
+      }
     }
   };
 
   const removeTruck = async (truck) => {
     const confirmText = window.prompt(
-      `Type DELETE to remove truck ${truck.licensePlate}. All routes linked to this truck will also be deleted.`
+      `Type DELETE to remove truck ${truck.licensePlate}. All routes linked to this truck will also be deleted.`,
     );
 
     if (!confirmText) return;
@@ -119,11 +130,11 @@ const ViewTrucks = () => {
 
       const res = await axios.delete(
         BASE_URL + `/scheduleDelivery/truck/${truck._id}`,
-        { withCredentials: true }
+        { withCredentials: true },
       );
 
       setTrucks((prevTrucks) =>
-        prevTrucks.filter((item) => item._id !== truck._id)
+        prevTrucks.filter((item) => item._id !== truck._id),
       );
       if (editingTruckId === truck._id) {
         cancelEditing();
@@ -131,7 +142,7 @@ const ViewTrucks = () => {
 
       const deletedRouteCount = res.data?.data?.deletedRouteCount ?? 0;
       setMessage(
-        `${truck.licensePlate} removed successfully. ${deletedRouteCount} associated route(s) deleted.`
+        `${truck.licensePlate} removed successfully. ${deletedRouteCount} associated route(s) deleted.`,
       );
     } catch (err) {
       setError(err.response?.data || "Unable to delete truck.");
@@ -144,7 +155,9 @@ const ViewTrucks = () => {
     <div className="min-h-screen px-4 py-10 sm:px-6 lg:px-8">
       <div className="mx-auto w-full max-w-6xl">
         <div className="reveal-on-scroll mb-6 rounded-2xl border border-primary/20 bg-gradient-to-r from-primary/10 via-secondary/10 to-accent/10 p-5 shadow-sm">
-          <h1 className="text-3xl font-extrabold text-base-content">Your Trucks</h1>
+          <h1 className="text-3xl font-extrabold text-base-content">
+            Your Trucks
+          </h1>
           <p className="mt-2 text-sm text-base-content/70">
             View and edit all trucks registered under your company account.
           </p>
@@ -205,7 +218,9 @@ const ViewTrucks = () => {
                           disabled={deletingTruckId === truck._id}
                         >
                           <Trash2 className="h-4 w-4" />
-                          {deletingTruckId === truck._id ? "Removing..." : "Remove"}
+                          {deletingTruckId === truck._id
+                            ? "Removing..."
+                            : "Remove"}
                         </button>
                       </div>
                     ) : (
@@ -242,7 +257,9 @@ const ViewTrucks = () => {
                           onChange={(e) =>
                             setDraft((prev) => ({
                               ...prev,
-                              licensePlate: normalizeLicensePlate(e.target.value),
+                              licensePlate: normalizeLicensePlate(
+                                e.target.value,
+                              ),
                             }))
                           }
                           className="input input-bordered bg-base-100/70"
@@ -251,7 +268,9 @@ const ViewTrucks = () => {
 
                       <label className="form-control w-full">
                         <div className="label pb-1">
-                          <span className="label-text">Total Capacity (kg)</span>
+                          <span className="label-text">
+                            Total Capacity (kg)
+                          </span>
                         </div>
                         <input
                           type="number"
@@ -292,15 +311,21 @@ const ViewTrucks = () => {
                   ) : (
                     <div className="grid grid-cols-1 gap-3 text-sm text-base-content/80 md:grid-cols-3">
                       <p>
-                        <span className="font-semibold text-base-content">Capacity:</span>{" "}
+                        <span className="font-semibold text-base-content">
+                          Capacity:
+                        </span>{" "}
                         {truck.totalCapacity} kg
                       </p>
                       <p>
-                        <span className="font-semibold text-base-content">Material:</span>{" "}
+                        <span className="font-semibold text-base-content">
+                          Material:
+                        </span>{" "}
                         {truck.materialType}
                       </p>
                       <p>
-                        <span className="font-semibold text-base-content">Truck ID:</span>{" "}
+                        <span className="font-semibold text-base-content">
+                          Truck ID:
+                        </span>{" "}
                         {truck._id}
                       </p>
                     </div>

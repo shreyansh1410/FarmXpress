@@ -2,14 +2,22 @@ import { useEffect, useMemo, useState } from "react";
 import axios from "axios";
 import { BASE_URL } from "../utils/constants";
 import { useLocation } from "react-router-dom";
-import { CheckCircle2, MapPinned, PackagePlus, Plus, Route, X } from "lucide-react";
+import {
+  CheckCircle2,
+  MapPinned,
+  PackagePlus,
+  Plus,
+  Route,
+  X,
+} from "lucide-react";
 import {
   formatIndianLocation,
   getCitiesForState,
   INDIAN_STATES,
 } from "../data/indianLocations";
 
-const normalizeLicensePlate = (value = "") => value.toUpperCase().replace(/\s+/g, "");
+const normalizeLicensePlate = (value = "") =>
+  value.toUpperCase().replace(/\s+/g, "");
 const MATERIAL_TYPE_OPTIONS = [
   "Building Materials",
   "Automotive Parts and Vehicles",
@@ -27,21 +35,25 @@ const MATERIAL_TYPE_OPTIONS = [
 const AddRoute = () => {
   const location = useLocation();
   const [trucks, setTrucks] = useState([]);
-  const [selectedTruckId, setSelectedTruckId] = useState(location.state?.truckId || "");
+  const [selectedTruckId, setSelectedTruckId] = useState(
+    location.state?.truckId || "",
+  );
   const [sourceState, setSourceState] = useState("Uttar Pradesh");
   const [sourceCity, setSourceCity] = useState("");
   const [destinationState, setDestinationState] = useState("Uttar Pradesh");
   const [destinationCity, setDestinationCity] = useState("");
   const [destinationLoad, setDestinationLoad] = useState("");
   const [materialType, setMaterialType] = useState("General Merchandise");
-  const [stopRows, setStopRows] = useState([{ stopState: "Uttar Pradesh", stopCity: "", stopLoad: "" }]);
+  const [stopRows, setStopRows] = useState([
+    { stopState: "Uttar Pradesh", stopCity: "", stopLoad: "" },
+  ]);
   const [error, setError] = useState("");
   const [successMessage, setSuccessMessage] = useState("");
   const [infoMessage, setInfoMessage] = useState("");
 
   const selectedTruck = useMemo(
     () => trucks.find((truck) => truck._id === selectedTruckId) || null,
-    [trucks, selectedTruckId]
+    [trucks, selectedTruckId],
   );
 
   const fetchTrucks = async () => {
@@ -59,8 +71,8 @@ const AddRoute = () => {
             normalizeLicensePlate(
               location.state?.licensePlate ||
                 localStorage.getItem("lastAddedTruckLicensePlate") ||
-                ""
-            )
+                "",
+            ),
         );
         setSelectedTruckId(preferredTruck?._id || companyTrucks[0]._id);
       }
@@ -84,14 +96,24 @@ const AddRoute = () => {
     if (stopRows.length < 10) {
       setStopRows([
         ...stopRows,
-        { stopState: sourceState || "Uttar Pradesh", stopCity: "", stopLoad: "" },
+        {
+          stopState: sourceState || "Uttar Pradesh",
+          stopCity: "",
+          stopLoad: "",
+        },
       ]);
     }
   };
 
   const removeStop = (indexToRemove) => {
     if (stopRows.length === 1) {
-      setStopRows([{ stopState: sourceState || "Uttar Pradesh", stopCity: "", stopLoad: "" }]);
+      setStopRows([
+        {
+          stopState: sourceState || "Uttar Pradesh",
+          stopCity: "",
+          stopLoad: "",
+        },
+      ]);
       return;
     }
     setStopRows(stopRows.filter((_, index) => index !== indexToRemove));
@@ -114,20 +136,32 @@ const AddRoute = () => {
         return;
       }
 
-      if (!sourceState || !sourceCity || !destinationState || !destinationCity) {
-        setError("Please choose both state and city for source and destination.");
+      if (
+        !sourceState ||
+        !sourceCity ||
+        !destinationState ||
+        !destinationCity
+      ) {
+        setError(
+          "Please choose both state and city for source and destination.",
+        );
         return;
       }
       const normalizedSource = formatIndianLocation(sourceCity, sourceState);
-      const normalizedDestination = formatIndianLocation(destinationCity, destinationState);
+      const normalizedDestination = formatIndianLocation(
+        destinationCity,
+        destinationState,
+      );
 
       const hasIncompleteStop = stopRows.some(
         (row) =>
           ((row.stopCity || "").trim() && row.stopLoad === "") ||
-          (!(row.stopCity || "").trim() && row.stopLoad !== "")
+          (!(row.stopCity || "").trim() && row.stopLoad !== ""),
       );
       if (hasIncompleteStop) {
-        setError("Each intermediate stop must include both city and stop load.");
+        setError(
+          "Each intermediate stop must include both city and stop load.",
+        );
         return;
       }
       if (destinationLoad === "") {
@@ -151,12 +185,12 @@ const AddRoute = () => {
       const cleanedIntermediateStops = intermediateStops.filter(
         (row) =>
           row.stopName.toLowerCase() !== sourceLower &&
-          row.stopName.toLowerCase() !== destinationLower
+          row.stopName.toLowerCase() !== destinationLower,
       );
 
       if (cleanedIntermediateStops.length !== intermediateStops.length) {
         setInfoMessage(
-          "Intermediate stops matching source/destination were auto-removed."
+          "Intermediate stops matching source/destination were auto-removed.",
         );
       }
       const normalizedStops = [
@@ -177,7 +211,7 @@ const AddRoute = () => {
         normalizedStopLoads.some((load) => load > selectedTruck.totalCapacity)
       ) {
         setError(
-          `Stop load cannot exceed selected truck capacity (${selectedTruck.totalCapacity} kg).`
+          `Stop load cannot exceed selected truck capacity (${selectedTruck.totalCapacity} kg).`,
         );
         return;
       }
@@ -192,14 +226,20 @@ const AddRoute = () => {
           stops: normalizedStops,
           stopLoads: normalizedStopLoads,
         },
-        { withCredentials: true }
+        { withCredentials: true },
       );
 
       console.log("Route Added:", res.data);
 
       if (res.status === 200 || res.status === 201) {
         setSuccessMessage("Route added successfully!");
-        setStopRows([{ stopState: sourceState || "Uttar Pradesh", stopCity: "", stopLoad: "" }]);
+        setStopRows([
+          {
+            stopState: sourceState || "Uttar Pradesh",
+            stopCity: "",
+            stopLoad: "",
+          },
+        ]);
         setDestinationCity("");
         setDestinationLoad("");
       }
@@ -219,9 +259,12 @@ const AddRoute = () => {
                 <p className="text-xs font-semibold uppercase tracking-[0.16em] text-primary">
                   Route Planner
                 </p>
-                <h1 className="mt-1 text-3xl font-extrabold text-base-content">Create a Delivery Route</h1>
+                <h1 className="mt-1 text-3xl font-extrabold text-base-content">
+                  Create a Delivery Route
+                </h1>
                 <p className="mt-2 text-sm text-base-content/70">
-                  Plan source, stops, and destination loads with smarter validation.
+                  Plan source, stops, and destination loads with smarter
+                  validation.
                 </p>
               </div>
               <div className="hidden rounded-xl border border-base-300/70 bg-base-100/70 p-3 backdrop-blur sm:flex">
@@ -232,7 +275,9 @@ const AddRoute = () => {
           <div className="apple-glass apple-glass-hover reveal-on-scroll reveal-up space-y-5 rounded-2xl border border-base-300/70 bg-base-200/60 p-5 shadow-md backdrop-blur-lg lg:col-span-2">
             <label className="form-control w-full">
               <div className="label pb-1">
-                <span className="label-text font-semibold text-base-content">Select Truck</span>
+                <span className="label-text font-semibold text-base-content">
+                  Select Truck
+                </span>
               </div>
               <select
                 value={selectedTruckId}
@@ -242,21 +287,24 @@ const AddRoute = () => {
                 <option value="">Select one of your trucks</option>
                 {trucks.map((truck) => (
                   <option key={truck._id} value={truck._id}>
-                    {normalizeLicensePlate(truck.licensePlate)} - {truck.totalCapacity} kg
+                    {normalizeLicensePlate(truck.licensePlate)} -{" "}
+                    {truck.totalCapacity} kg
                   </option>
                 ))}
               </select>
               {selectedTruck && (
                 <p className="mt-2 text-xs text-base-content/70">
-                  Selected: {normalizeLicensePlate(selectedTruck.licensePlate)} (
-                  {selectedTruck.totalCapacity} kg max capacity)
+                  Selected: {normalizeLicensePlate(selectedTruck.licensePlate)}{" "}
+                  ({selectedTruck.totalCapacity} kg max capacity)
                 </p>
               )}
             </label>
 
             <label className="form-control w-full">
               <div className="label pb-1">
-                <span className="label-text font-semibold text-base-content">Material Type</span>
+                <span className="label-text font-semibold text-base-content">
+                  Material Type
+                </span>
               </div>
               <select
                 className="select select-bordered w-full bg-base-100/70"
@@ -272,15 +320,20 @@ const AddRoute = () => {
             </label>
 
             <div className="apple-glass apple-glass-hover reveal-on-scroll rounded-xl border border-base-300/70 bg-base-100/60 p-4">
-              <p className="text-sm font-semibold text-base-content">Route Details</p>
+              <p className="text-sm font-semibold text-base-content">
+                Route Details
+              </p>
               <p className="mt-1 text-xs text-base-content/70">
-                Choose valid Indian state and city pairs for source, stops, and destination.
+                Choose valid Indian state and city pairs for source, stops, and
+                destination.
               </p>
 
               <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
                 <label className="form-control w-full">
                   <div className="label pb-1">
-                    <span className="label-text font-medium text-base-content">Source State</span>
+                    <span className="label-text font-medium text-base-content">
+                      Source State
+                    </span>
                   </div>
                   <select
                     value={sourceState}
@@ -299,7 +352,9 @@ const AddRoute = () => {
                 </label>
                 <label className="form-control w-full">
                   <div className="label pb-1">
-                    <span className="label-text font-medium text-base-content">Source City</span>
+                    <span className="label-text font-medium text-base-content">
+                      Source City
+                    </span>
                   </div>
                   <select
                     value={sourceCity}
@@ -318,7 +373,9 @@ const AddRoute = () => {
 
               <div className="mt-4 rounded-xl border border-base-300/70 bg-base-200/70 p-4">
                 <div className="mb-3 flex items-center justify-between">
-                  <p className="text-sm font-semibold text-base-content">Intermediate Stops</p>
+                  <p className="text-sm font-semibold text-base-content">
+                    Intermediate Stops
+                  </p>
                   <button
                     onClick={addStop}
                     disabled={stopRows.length >= 10}
@@ -352,8 +409,14 @@ const AddRoute = () => {
                         <select
                           value={row.stopState}
                           onChange={(e) => {
-                            updateStopRow(index, "stopState", e.target.value);
-                            updateStopRow(index, "stopCity", "");
+                            const newState = e.target.value;
+                            setStopRows((prev) =>
+                              prev.map((r, i) =>
+                                i === index
+                                  ? { ...r, stopState: newState, stopCity: "" }
+                                  : r,
+                              ),
+                            );
                           }}
                           className="select select-bordered w-full bg-base-100/85"
                         >
@@ -365,7 +428,9 @@ const AddRoute = () => {
                         </select>
                         <select
                           value={row.stopCity}
-                          onChange={(e) => updateStopRow(index, "stopCity", e.target.value)}
+                          onChange={(e) =>
+                            updateStopRow(index, "stopCity", e.target.value)
+                          }
                           className="select select-bordered w-full bg-base-100/85"
                         >
                           <option value="">Select stop city</option>
@@ -380,7 +445,9 @@ const AddRoute = () => {
                           min="0"
                           placeholder="Load at stop (kg)"
                           value={row.stopLoad}
-                          onChange={(e) => updateStopRow(index, "stopLoad", e.target.value)}
+                          onChange={(e) =>
+                            updateStopRow(index, "stopLoad", e.target.value)
+                          }
                           className="input input-bordered w-full bg-base-100/85"
                         />
                       </div>
@@ -392,7 +459,9 @@ const AddRoute = () => {
               <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
                 <label className="form-control w-full">
                   <div className="label pb-1">
-                    <span className="label-text font-medium text-base-content">Destination State</span>
+                    <span className="label-text font-medium text-base-content">
+                      Destination State
+                    </span>
                   </div>
                   <select
                     value={destinationState}
@@ -411,7 +480,9 @@ const AddRoute = () => {
                 </label>
                 <label className="form-control w-full">
                   <div className="label pb-1">
-                    <span className="label-text font-medium text-base-content">Destination City</span>
+                    <span className="label-text font-medium text-base-content">
+                      Destination City
+                    </span>
                   </div>
                   <select
                     value={destinationCity}
@@ -430,20 +501,25 @@ const AddRoute = () => {
 
               <label className="form-control mt-3 w-full">
                 <div className="label pb-1">
-                  <span className="label-text font-medium text-base-content">Destination Load (kg)</span>
-                  </div>
-                  <input
-                    type="number"
-                    min="0"
-                    placeholder="Enter destination load"
-                    value={destinationLoad}
-                    onChange={(e) => setDestinationLoad(e.target.value)}
-                    className="input input-bordered w-full bg-base-100/70"
-                  />
+                  <span className="label-text font-medium text-base-content">
+                    Destination Load (kg)
+                  </span>
+                </div>
+                <input
+                  type="number"
+                  min="0"
+                  placeholder="Enter destination load"
+                  value={destinationLoad}
+                  onChange={(e) => setDestinationLoad(e.target.value)}
+                  className="input input-bordered w-full bg-base-100/70"
+                />
               </label>
             </div>
 
-            <button className="btn btn-success w-full text-base font-semibold" onClick={handleAddRoute}>
+            <button
+              className="btn btn-success w-full text-base font-semibold"
+              onClick={handleAddRoute}
+            >
               <PackagePlus className="h-5 w-5" />
               Save Route
             </button>
@@ -473,17 +549,22 @@ const AddRoute = () => {
                 <p className="text-sm font-semibold">Trip Clarity</p>
               </div>
               <p className="text-sm text-base-content/75">
-                Keep source and destination unique for clearer ETAs and route sequencing.
+                Keep source and destination unique for clearer ETAs and route
+                sequencing.
               </p>
             </div>
 
-            <div className="apple-glass apple-glass-hover reveal-on-scroll reveal-up rounded-2xl border border-base-300/70 bg-base-200/60 p-4 shadow-sm backdrop-blur" style={{ "--reveal-delay": "90ms" }}>
+            <div
+              className="apple-glass apple-glass-hover reveal-on-scroll reveal-up rounded-2xl border border-base-300/70 bg-base-200/60 p-4 shadow-sm backdrop-blur"
+              style={{ "--reveal-delay": "90ms" }}
+            >
               <div className="mb-2 flex items-center gap-2 text-secondary">
                 <PackagePlus className="h-4 w-4" />
                 <p className="text-sm font-semibold">Load Safety</p>
               </div>
               <p className="text-sm text-base-content/75">
-                Stop loads are validated against truck capacity to prevent overbooking.
+                Stop loads are validated against truck capacity to prevent
+                overbooking.
               </p>
             </div>
           </div>
